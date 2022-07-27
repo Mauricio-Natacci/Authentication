@@ -1,24 +1,43 @@
-const path = require('path');
+const path = require('path')
 
-const express = require('express');
+const express = require('express')
+const session = require('express-session')
+const mongodbStore = require('connect-mongodb-session')
 
-const db = require('./data/database');
-const demoRoutes = require('./routes/demo');
+const db = require('./data/database')
+const demoRoutes = require('./routes/demo')
 
-const app = express();
+const MongoDBStore = mongodbStore(session)
 
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+const app = express()
 
-app.use(express.static('public'));
-app.use(express.urlencoded({ extended: false }));
+const SessionStore = new MongoDBStore({
+  uri: 'mongodb://0.0.0.0:27017/',
+  databaseName: 'auth-demo',
+  collection: 'sessions'
+})
 
-app.use(demoRoutes);
+app.set('view engine', 'ejs')
+app.set('views', path.join(__dirname, 'views'))
 
-app.use(function(error, req, res, next) {
-  res.render('500');
+app.use(express.static('public'))
+app.use(express.urlencoded({ extended: false }))
+
+app.use(
+  session({
+    secret: 'super-secret',
+    resave: false,
+    saveUninitialized: false,
+    store: SessionStore
+  })
+)
+
+app.use(demoRoutes)
+
+app.use(function (error, req, res, next) {
+  res.render('500')
 })
 
 db.connectToDatabase().then(function () {
-  app.listen(3000);
-});
+  app.listen(3000)
+})
