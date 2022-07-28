@@ -11,7 +11,7 @@ const MongoDBStore = mongodbStore(session)
 
 const app = express()
 
-const SessionStore = new MongoDBStore({
+const sessionStore = new MongoDBStore({
   uri: 'mongodb://0.0.0.0:27017/',
   databaseName: 'auth-demo',
   collection: 'sessions'
@@ -28,9 +28,29 @@ app.use(
     secret: 'super-secret',
     resave: false,
     saveUninitialized: false,
-    store: SessionStore
+    store: sessionStore,
+    cookie: {
+      maxAge: 2 * 24 * 60 * 60 * 1000
+    }
   })
 )
+
+app.use(async function (req, res, next) {
+  const user = req.session.user
+  const isAuth = req.session.isAuthenticated
+
+  if (!user || !isAuth) {
+    return next()
+  }
+
+  const userDoc = await db.getDb().collection('users').findOne({ _id: user.id })
+  const isAdmin = userDoc.isAdmin
+
+  res.locals.isAuth = isAuth
+  res.locals.isAdmin = isAdmin
+
+  next()
+})
 
 app.use(demoRoutes)
 
